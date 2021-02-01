@@ -756,6 +756,8 @@
     // our square size
     function calculateSquareSize () {
       var containerWidth = parseInt($container.width(), 10)
+      var containerHeight = parseInt($container.height(), 10)
+      containerWidth = Math.min(containerHeight, containerWidth)
 
       // defensive, prevent infinite loop
       if (!containerWidth || containerWidth <= 0) {

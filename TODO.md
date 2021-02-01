@@ -1,10 +1,13 @@
 How it works:  
-- Chess but 8 (maybe less) hidden mines set on each side at start of game
+- Chess but 4 (maybe less) hidden mines set on each side at start of game
 - Each piece indicates how many mines are adjacent to it
 - Hovering over a piece shows this number
 - Landing a piece on an opponent's mine blows up the piece and all adjacent pieces
 - You can protect your mines by placing your own pieces on top of them
 - You can flag squares where you think mines are
+
+Maybe:
+- 2 mines friendly (shown), 2 mines neutral (hidden)
 
 Misc ideas:  
 - Capturing opponents pieces gives an equivalent amount of gold
