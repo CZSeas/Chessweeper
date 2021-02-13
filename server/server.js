@@ -38,6 +38,13 @@ app.use(cookieParser());
 
 app.use(sessionMiddleware);
 
+// Force HTTPS
+app.use(function(req, res, next) {
+    if ((req.get('X-Forwarded-Proto') !== 'https')) {
+        res.redirect('https://' + req.get('Host') + req.url);
+    } else
+        next();
+});
 
 // Runs function for every socket that connects
 io.use(function (socket, next) {
