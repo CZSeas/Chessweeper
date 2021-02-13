@@ -32,7 +32,8 @@ function onDragStart (source, piece, position, orientation) {
     if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
         (game.turn() === 'b' && piece.search(/^w/) !== -1) ||
         (game.turn() === 'w' && color === 'black') ||
-        (game.turn() === 'b' && color === 'white')) {
+        (game.turn() === 'b' && color === 'white') ||
+        !play) {
         return false
     }
 }
