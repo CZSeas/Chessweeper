@@ -8,6 +8,10 @@ How it works:
 
 Maybe:
 - 2 mines friendly (shown), 2 mines neutral (hidden)
+- Set target positions, so that if you land certain pieces on them something happens
+    - Opponent can see positions, but don't know the piece
+- King and Queen into rook pawn factory
+- King Queen bumping scene
 
 Misc ideas:  
 - Capturing opponents pieces gives an equivalent amount of gold

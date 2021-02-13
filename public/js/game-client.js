@@ -3,6 +3,7 @@
 // TODO: add way to set username
 // TODO: add way to choose room
 // TODO: add mines [WIP]
+// TODO: add in check condition kamikaze
 
 // COMPLETE: fixed pawn jump highlight bug by handling FEN exception
 
