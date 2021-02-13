@@ -1,5 +1,5 @@
 How it works:  
-- Chess but 4 (maybe less) hidden mines set on each side at start of game
+- Chess but 4 (maybe less) hidden mines set on each side at start of gameClient
 - Each piece indicates how many mines are adjacent to it
 - Hovering over a piece shows this number
 - Landing a piece on an opponent's mine blows up the piece and all adjacent pieces
