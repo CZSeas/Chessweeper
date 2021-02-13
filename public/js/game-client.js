@@ -11,6 +11,7 @@
 $(document).ready(function() {
 
     let socket = null;
+    let board = Chessboard('myBoard');
 
     $.ajax({
         url: '/login',
@@ -116,7 +117,6 @@ $(document).ready(function() {
     const $board = $('#myBoard');
     const columns = 'abcdefgh';
 
-    let board;
     let color = 'white';
     let numPlayers;
     let play = false;
