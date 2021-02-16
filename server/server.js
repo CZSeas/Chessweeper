@@ -222,7 +222,9 @@ io.on('connection', (socket) => {
         // TODO: add other bomb types
         let type = 'f'
         let [i, j] = mapFen(move.to)
-        if (rooms[roomId][sessionId].hBombs !== undefined && rooms[roomId][sessionId].hBombs[i][j] === 1) {
+        // TODO: remove temp neutral bombs
+        if (rooms[roomId][sessionId].hBombs !== undefined && (rooms[roomId][sessionId].hBombs[i][j] === 1
+                || rooms[roomId][sessionId].fBombs[i][j] === 1)) {
             io.to(roomId).emit('explodeBomb', {
                 square: move.to,
                 type: type,
