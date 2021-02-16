@@ -1,11 +1,15 @@
 // TODO: add way to change colors using button/prompt
 // TODO: add way to toggle off misc. gameClient options [WIP]
-// TODO: add way to set username
-// TODO: add way to choose room
-// TODO: add mines [WIP]
-// TODO: add in check condition kamikaze
+// TODO: display username
+// TODO: optional promotion
+
+// TODO: add in check condition kamikaze [WIP]
+// TODO: after bomb blows up reduce count
 
 // COMPLETE: fixed pawn jump highlight bug by handling FEN exception
+// COMPLETE: add mines
+// COMPLETE: add way to set username
+// COMPLETE: add way to choose room
 
 /* ------------------------SETUP------------------------------------- */
 $(document).ready(function() {
@@ -69,7 +73,7 @@ $(document).ready(function() {
 
     // Check for moves from other player
     socket.on('move', function (move) {
-        gameClient.move(move);
+        gameClient.move(move, {legal: false});
         board.position(gameClient.fen());
         // let opponentColor = color === 'white' ? 'black' : 'white';
         // console.log(opponentColor + " moved");
@@ -89,6 +93,7 @@ $(document).ready(function() {
         } else if (msg.type === 'n') {
             $board.find('.square-' + msg.square).removeClass('highlight-nbomb');
         }
+        socket.emit('removeHiddenBomb', {i: msg.i, j: msg.j});
     })
 
     socket.on('highlightBomb', function (msg) {
@@ -140,22 +145,38 @@ $(document).ready(function() {
         }
     }
 
+    // Execute stuff on drop
+
     function onDrop(source, target) {
         removeHighlight();
+
+        let targetPiece = gameClient.get(target);
 
         // see if the move is legal
         let move = gameClient.move({
             from: source,
             to: target,
-            promotion: 'q' // NOTE: always promote to a queen for example simplicity
-        })
-        if (gameClient.game_over()) {
+            promotion: 'q'// NOTE: always promote to a queen for example simplicity
+        }, {legal: false})
+        if (gameClient.game_over() || (targetPiece !== null && targetPiece.type === 'k')) {
+            // TODO: handle checkBomb in checkmate situations
             socket.emit('gameOver', gameClient.turn() === 'w' ? 'black' : 'white');
         }
 
-        // illegal move
+        // illegal move or check edge case
         if (move === null) {
             return 'snapback';
+            // // TODO: check edge case [WIP]
+            // if (gameClient.in_check()) {
+            //     socket.emit('checkBomb', target);
+            //     socket.on('isBomb', (isBomb) => {
+            //         if (isBomb && !checkBomb(source, target)) {
+            //             return 'snapback';
+            //         }
+            //     })
+            // } else {
+            //     return 'snapback';
+            // }
         } else { // if the move is allowed, emit the move event.
             socket.emit('move', move);
         }
@@ -194,16 +215,15 @@ $(document).ready(function() {
         color = color === 'white' ? 'black' : 'white';
     }
 
-// TODO: refactor this concept
+    // TODO: refactor this concept
     function swapColorsOnLeave() {
         if (color === 'black') {
             color = 'white';
         }
     }
 
-    /**
-     * BOMB STUFF
-     */
+    /* ------------------------BOMB MECHANICS------------------------------------- */
+
     $board.on('click', () => {
         // TODO: add way to toggle between n and f bombs
         let type = 'f';
@@ -215,20 +235,50 @@ $(document).ready(function() {
         }
     })
 
-    function explodeBomb(square) {
+    function removeAdjacent(game, square) {
         let col = columns.indexOf(square[0]);
         let row = parseInt(square[1]);
         for (let i = Math.max(0, col - 1); i <= Math.min(7, col + 1); i++) {
             for (let j = Math.max(1, row - 1); j <= Math.min(8, row + 1); j++) {
                 let squareFen = `${columns[i]}${j}`;
-                gameClient.remove(squareFen);
-
+                game.remove(squareFen);
             }
         }
+    }
+
+    function explodeBomb(square) {
+        removeAdjacent(gameClient, square);
         console.log('explode');
         // Update board/gameClient
         board.position(gameClient.fen());
         gameClient.load(gameClient.fen());
+    }
+
+    function isValidCheckBomb(target) {
+        let tempGame = new Chess();
+        tempGame.load(gameClient.fen());
+        removeAdjacent(tempGame, target);
+        return !tempGame.in_check();
+    }
+
+    function checkBomb(source, target) {
+        let checkBomb = false;
+        if (isValidCheckBomb(target)) {
+            // Move twice to override null move
+            for (let i = 0; i < 2; i++) {
+                socket.emit('move', {
+                    from: source,
+                    to: target,
+                    promotion: 'q'
+                })
+            }
+            // Manually move the piece
+            let piece = gameClient.get(source);
+            gameClient.remove(source);
+            gameClient.put(piece, target);
+            checkBomb = true;
+        }
+        return checkBomb
     }
 
 // function skipTurn () {
@@ -238,7 +288,7 @@ $(document).ready(function() {
 //     gameClient.load(tokens.join(' '))
 // }
 
-    /* ------------------------------VISUAL--------------------------------------- */
+/* ------------------------------VISUAL--------------------------------------------------------- */
 
     function populateBoard() {
         for (let col of columns) {

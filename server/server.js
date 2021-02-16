@@ -1,5 +1,7 @@
 // TODO: Handle refresh by setting up playerId game room check
 
+// COMPLETE: Decrement hidden bombs when exploded
+
 const http = require('http');
 const path = require('path');
 const socketIO = require('socket.io');
@@ -38,9 +40,9 @@ app.use(cookieParser());
 
 app.use(sessionMiddleware);
 
-// Force HTTPS
+// Force HTTPS for live
 app.use(function(req, res, next) {
-    if ((req.get('X-Forwarded-Proto') !== 'https')) {
+    if ((req.get('X-Forwarded-Proto') !== 'https') && process.env.PORT) {
         res.redirect('https://' + req.get('Host') + req.url);
     } else
         next();
@@ -148,6 +150,7 @@ io.on('connection', (socket) => {
         }
     }
 
+    // TODO: do something on login
     socket.on('login', function (msg) {
       if (msg !== null) {
           if (playerIds.includes(msg)) {
@@ -156,9 +159,11 @@ io.on('connection', (socket) => {
       }
     })
 
+    // Join room given by roomId and find numPlayers in room
     socket.join(roomId);
-    numPlayers = io.sockets.adapter.rooms.get(roomId).size;
+    let numPlayers = io.sockets.adapter.rooms.get(roomId).size;
 
+    // If 1 player then white, if 2 players then black, otherwise full.
     if (numPlayers <= 2) {
         console.log('player ' + username + ' connected to room ' + roomId);
         // the first player to join the room gets white
@@ -172,12 +177,11 @@ io.on('connection', (socket) => {
             roomOptions
         })
     } else {
+        // TODO: redirect when full, probe room size before login
         socket.emit('full', roomId);
-        // TODO: Uncomment after wrapping in socket.on input
-        // return;
     }
 
-    // TODO: refactor maybe (handshake not needed)
+    // TODO: implement set bombs
     socket.on('configOptions', () => {
         configureOptions(roomOptions);
         // if (roomOptions.mines) {
@@ -192,15 +196,16 @@ io.on('connection', (socket) => {
     // The client side emits a 'move' event when a valid move has been made.
     socket.on('move', function (move) {
         socket.to(roomId).emit('move', move);
-        // TODO: add other bombs types
+        // TODO: add other bomb types
         let type = 'f'
         let [i, j] = mapFen(move.to)
         if (hBombs !== undefined && hBombs[i][j] === 1) {
             io.to(roomId).emit('explodeBomb', {
                 square: move.to,
-                type: type
+                type: type,
+                i: i,
+                j: j
             })
-            hBombs[i][j] = 0;
         }
     })
 
@@ -258,12 +263,30 @@ io.on('connection', (socket) => {
         }
     })
 
+    socket.on('removeHiddenBomb', function (msg) {
+        if (hBombs) {
+            hBombs[msg.i][msg.j] = 0;
+        }
+    })
+
     socket.on('getBombsAdjacent', function (square) {
         let numAdjacent = getBombsAdjacent(square);
         socket.emit('getBombsAdjacent', numAdjacent);
     })
 
-    // add a bomb
+    // Check if the move square is a bomb and returns bool
+    socket.on('checkBomb', function (target) {
+        let isBomb = false;
+        if (hBombs) {
+            let [i, j] = mapFen(target)
+            if (hBombs[i][j] === 1) {
+                isBomb = true;
+            }
+        }
+        socket.emit('isBomb', isBomb);
+    })
+
+    // TODO: refactor away from maxbombs == ready
     socket.on('addBomb', function (msg) {
         let square = msg.square;
         let [i, j] = mapFen(square);
