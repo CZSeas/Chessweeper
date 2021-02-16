@@ -114,7 +114,7 @@ $(document).ready(function() {
     socket.on('gameOver', function (color) {
         console.log(`${color} wins`);
         playing = false;
-        resetGame(color);
+        // resetGame(color);
     })
 
 
