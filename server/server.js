@@ -263,9 +263,12 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('removeHiddenBomb', function (msg) {
-        if (hBombs) {
+    socket.on('removeBomb', function (msg) {
+        if (msg.type === 'f') {
+            fBombs[msg.i][msg.j] = 0;
             hBombs[msg.i][msg.j] = 0;
+        } else {
+            // TODO: do something
         }
     })
 
@@ -275,16 +278,16 @@ io.on('connection', (socket) => {
     })
 
     // Check if the move square is a bomb and returns bool
-    socket.on('checkBomb', function (target) {
-        let isBomb = false;
-        if (hBombs) {
-            let [i, j] = mapFen(target)
-            if (hBombs[i][j] === 1) {
-                isBomb = true;
-            }
-        }
-        socket.emit('isBomb', isBomb);
-    })
+    // socket.on('checkBomb', function (target) {
+    //     let isBomb = false;
+    //     if (hBombs) {
+    //         let [i, j] = mapFen(target)
+    //         if (hBombs[i][j] === 1) {
+    //             isBomb = true;
+    //         }
+    //     }
+    //     socket.emit('isBomb', isBomb);
+    // })
 
     // TODO: refactor away from maxbombs == ready
     socket.on('addBomb', function (msg) {

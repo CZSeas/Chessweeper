@@ -93,7 +93,7 @@ $(document).ready(function() {
         } else if (msg.type === 'n') {
             $board.find('.square-' + msg.square).removeClass('highlight-nbomb');
         }
-        socket.emit('removeHiddenBomb', {i: msg.i, j: msg.j});
+        socket.emit('removeBomb', {type: msg.type, i: msg.i, j: msg.j});
     })
 
     socket.on('highlightBomb', function (msg) {
@@ -166,17 +166,6 @@ $(document).ready(function() {
         // illegal move or check edge case
         if (move === null) {
             return 'snapback';
-            // // TODO: check edge case [WIP]
-            // if (gameClient.in_check()) {
-            //     socket.emit('checkBomb', target);
-            //     socket.on('isBomb', (isBomb) => {
-            //         if (isBomb && !checkBomb(source, target)) {
-            //             return 'snapback';
-            //         }
-            //     })
-            // } else {
-            //     return 'snapback';
-            // }
         } else { // if the move is allowed, emit the move event.
             socket.emit('move', move);
         }
@@ -254,32 +243,32 @@ $(document).ready(function() {
         gameClient.load(gameClient.fen());
     }
 
-    function isValidCheckBomb(target) {
-        let tempGame = new Chess();
-        tempGame.load(gameClient.fen());
-        removeAdjacent(tempGame, target);
-        return !tempGame.in_check();
-    }
-
-    function checkBomb(source, target) {
-        let checkBomb = false;
-        if (isValidCheckBomb(target)) {
-            // Move twice to override null move
-            for (let i = 0; i < 2; i++) {
-                socket.emit('move', {
-                    from: source,
-                    to: target,
-                    promotion: 'q'
-                })
-            }
-            // Manually move the piece
-            let piece = gameClient.get(source);
-            gameClient.remove(source);
-            gameClient.put(piece, target);
-            checkBomb = true;
-        }
-        return checkBomb
-    }
+    // function isValidCheckBomb(target) {
+    //     let tempGame = new Chess();
+    //     tempGame.load(gameClient.fen());
+    //     removeAdjacent(tempGame, target);
+    //     return !tempGame.in_check();
+    // }
+    //
+    // function checkBomb(source, target) {
+    //     let checkBomb = false;
+    //     if (isValidCheckBomb(target)) {
+    //         // Move twice to override null move
+    //         for (let i = 0; i < 2; i++) {
+    //             socket.emit('move', {
+    //                 from: source,
+    //                 to: target,
+    //                 promotion: 'q'
+    //             })
+    //         }
+    //         // Manually move the piece
+    //         let piece = gameClient.get(source);
+    //         gameClient.remove(source);
+    //         gameClient.put(piece, target);
+    //         checkBomb = true;
+    //     }
+    //     return checkBomb
+    // }
 
 // function skipTurn () {
 //     let tokens = gameClient.fen().split(' ');
