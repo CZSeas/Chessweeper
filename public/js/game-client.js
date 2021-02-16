@@ -2,14 +2,15 @@
 // TODO: add way to toggle off misc. gameClient options [WIP]
 // TODO: display username
 // TODO: optional promotion
-
-// TODO: add in check condition kamikaze [WIP]
-// TODO: after bomb blows up reduce count
+// TODO: check if serverside opponentReady/ready is needed
 
 // COMPLETE: fixed pawn jump highlight bug by handling FEN exception
+// COMPLETE: add in check condition kamikaze
 // COMPLETE: add mines
 // COMPLETE: add way to set username
 // COMPLETE: add way to choose room
+// COMPLETE: after bomb blows up reduce count
+// COMPLETE: add mine setting time period
 
 /* ------------------------SETUP------------------------------------- */
 $(document).ready(function() {
@@ -17,30 +18,24 @@ $(document).ready(function() {
     let socket = null;
     let board = Chessboard('myBoard');
 
-    $.ajax({
-        url: '/login',
-        type: 'GET',
-        async: false,
-        success: (function (data) {
-            socket = io({
-                auth: {
-                    username: data.username,
-                    roomId: data.roomId,
-                    playerId: data.playerId
-                }
-            })
+    const $board = $('#myBoard');
+    const $confirmBombs = $('#confirmBombs');
+    const $header = $('#header');
+    let headerText = {
+        waiting: '[Waiting for opponent...]',
+        setting: '[Set up to 2 mines]',
+        set_wait: '[Opponent setting mines...]',
+        playing: '[Play]'
+    }
 
-            // Set sessionId
-            localStorage.setItem('playerId', data.playerId);
+    let color = 'white';
+    let numPlayers;
+    let playing = false;
+    let ready = false;
+    let opponentReady = false;
+    let roomOptions;
 
-            // Save user
-            socket.emit('login', localStorage.getItem('playerId'));
-
-        }),
-        error: (function (jqXHR, textStatus, err) {
-            alert('text status ' + textStatus + ', err ' + err)
-        })
-    })
+    socket = io();
 
     /* --------------------------SERVER CONNECTION------------------------------- */
 
@@ -52,23 +47,59 @@ $(document).ready(function() {
             socket.emit('setup');
         }
         createBoard(color);
+        $header.text(headerText.waiting);
+        socket.emit('setHeader', headerText.waiting);
     })
 
     // For player already in room
     socket.on('setup', () => {
         // resetGame(color);
         socket.emit('configOptions');
+        $confirmBombs.addClass('active');
+        $header.text(headerText.setting);
+        socket.emit('setHeader', headerText.setting);
     })
 
-    socket.on('setBombs', () => {
-        // Wait for mines to be set
+    // Get current game Fen
+    socket.on('getGame', (sessionId) => {
+        let game = {
+            fen: gameClient.fen(),
+            sessionId: sessionId
+        }
+        socket.emit('getGame', game);
     })
 
-    socket.on('ready', () => {
+    // Load game from server
+    socket.on('loadGame', (data)=> {
+        roomOptions = data.roomOptions;
+        color = data.color;
+        createBoard(data.color);
+        board.position(data.fen);
+        gameClient.load(data.fen)
+        $header.text(data.headerText);
+        playing = data.playing;
+        ready = data.ready;
+        if (ready) {
+            socket.emit('highlightBombs');
+        } else {
+            $confirmBombs.addClass('active');
+        }
+
+    })
+
+    socket.on('opponentReady', () => {
         console.log('Opponent ready to play');
-        // TODO: change to game.play
-        play = true;
-        console.log(color);
+        // TODO: change to game.playing
+        opponentReady = true;
+        if (ready) {
+            $header.text(headerText.playing);
+            socket.emit('setHeader', headerText.playing);
+            socket.emit('play');
+        }
+    })
+
+    socket.on('play', () => {
+        playing = true;
     })
 
     // Check for moves from other player
@@ -82,35 +113,10 @@ $(document).ready(function() {
     // Game over or opponent leaves
     socket.on('gameOver', function (color) {
         console.log(`${color} wins`);
-        play = false;
+        playing = false;
         resetGame(color);
     })
 
-    socket.on('explodeBomb', function (msg) {
-        explodeBomb(msg.square);
-        if (msg.type === 'f') {
-            $board.find('.square-' + msg.square).removeClass('highlight-fbomb');
-        } else if (msg.type === 'n') {
-            $board.find('.square-' + msg.square).removeClass('highlight-nbomb');
-        }
-        socket.emit('removeBomb', {type: msg.type, i: msg.i, j: msg.j});
-    })
-
-    socket.on('highlightBomb', function (msg) {
-        if (msg.type === 'f') {
-            $board.find('.square-' + msg.square).addClass('highlight-fbomb');
-        } else if (msg.type === 'n') {
-            $board.find('.square-' + msg.square).addClass('highlight-nbomb');
-        }
-    })
-
-    socket.on('addHiddenBomb', function (msg) {
-        socket.emit('addHiddenBomb', msg);
-    })
-
-    socket.on('getBombsAdjacent', function (numAdjacent) {
-        showNumAdjacent(numAdjacent);
-    })
 
     // socket.on('skipTurn', () => {
     //     skipTurn();
@@ -119,13 +125,7 @@ $(document).ready(function() {
     /* ------------------------GAME MECHANICS------------------------------------- */
 
     let gameClient = new Chess();
-    const $board = $('#myBoard');
     const columns = 'abcdefgh';
-
-    let color = 'white';
-    let numPlayers;
-    let play = false;
-    let roomOptions;
 
     let currentSquare;
     let currentPiece;
@@ -140,7 +140,7 @@ $(document).ready(function() {
             (gameClient.turn() === 'b' && piece.search(/^w/) !== -1) ||
             (gameClient.turn() === 'w' && color === 'black') ||
             (gameClient.turn() === 'b' && color === 'white') ||
-            !play) {
+            !playing) {
             return false
         }
     }
@@ -158,7 +158,8 @@ $(document).ready(function() {
             to: target,
             promotion: 'q'// NOTE: always promote to a queen for example simplicity
         }, {legal: false})
-        if (gameClient.game_over() || (targetPiece !== null && targetPiece.type === 'k')) {
+        if (gameClient.game_over() || (move != null && targetPiece !== null
+            && targetPiece.type === 'k')) {
             // TODO: handle checkBomb in checkmate situations
             socket.emit('gameOver', gameClient.turn() === 'w' ? 'black' : 'white');
         }
@@ -211,7 +212,7 @@ $(document).ready(function() {
         }
     }
 
-    /* ------------------------BOMB MECHANICS------------------------------------- */
+/* --------------------------------BOMB MECHANICS------------------------------------- */
 
     $board.on('click', () => {
         // TODO: add way to toggle between n and f bombs
@@ -222,6 +223,24 @@ $(document).ready(function() {
                 type: type
             })
         }
+    })
+
+    socket.on('explodeBomb', function (msg) {
+        explodeBomb(msg.square);
+        socket.emit('unhighlightBomb', msg);
+        socket.emit('removeBomb', {type: msg.type, i: msg.i, j: msg.j});
+    })
+
+    socket.on('addHiddenBomb', function (msg) {
+        socket.emit('addHiddenBomb', msg);
+    })
+
+    socket.on('getBombsAdjacent', function (numAdjacent) {
+        showNumAdjacent(numAdjacent);
+    })
+
+    socket.on('setBombs', () => {
+        // Wait for mines to be set
     })
 
     function removeAdjacent(game, square) {
@@ -278,6 +297,37 @@ $(document).ready(function() {
 // }
 
 /* ------------------------------VISUAL--------------------------------------------------------- */
+
+    $confirmBombs.on('click', () => {
+        socket.emit('confirmBombs');
+        $confirmBombs.removeClass('active');
+        ready = true;
+        socket.emit('ready');
+        if (opponentReady) {
+            $header.text(headerText.playing);
+            socket.emit('setHeader', headerText.playing);
+            socket.emit('play');
+        } else {
+            $header.text(headerText.set_wait);
+            socket.emit('setHeader', headerText.set_wait);
+        }
+    })
+
+    socket.on('highlightBomb', function (msg) {
+        if (msg.type === 'f') {
+            $board.find('.square-' + msg.square).addClass('highlight-fbomb');
+        } else if (msg.type === 'n') {
+            $board.find('.square-' + msg.square).addClass('highlight-nbomb');
+        }
+    })
+
+    socket.on('unhighlightBomb', function (msg) {
+        if (msg.type === 'f') {
+            $board.find('.square-' + msg.square).removeClass('highlight-fbomb');
+        } else if (msg.type === 'n') {
+            $board.find('.square-' + msg.square).removeClass('highlight-nbomb');
+        }
+    })
 
     function populateBoard() {
         for (let col of columns) {
@@ -337,7 +387,7 @@ $(document).ready(function() {
         currentSquare = square;
         currentPiece = piece;
 
-        if (piece && roomOptions.mines && play) {
+        if (piece && roomOptions.mines && playing) {
             if (piece[0] === color[0]) {
                 socket.emit('getBombsAdjacent', square);
             }
@@ -345,6 +395,7 @@ $(document).ready(function() {
 
         // get list of possible moves for this square
         let moves = getLegalMoves(square);
+        console.log(moves)
 
         // exit if there are no moves available for this square
         if (!piece || moves.length === 0) return;
