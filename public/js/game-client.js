@@ -147,11 +147,8 @@ $(document).ready(function() {
     function onDrop(source, target) {
         removeHighlight();
 
-        let tempGame = new Chess();
-        tempGame.load(gameClient.fen());
-
         // see if the move is legal
-        let move = tempGame.move({
+        let move = gameClient.move({
             from: source,
             to: target,
             promotion: 'q'// NOTE: always promote to a queen for example simplicity
