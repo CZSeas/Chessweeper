@@ -77,7 +77,11 @@ $(document).ready(function() {
         } else {
             $confirmBombs.addClass('active');
         }
+    })
 
+    socket.on('error', (msg) => {
+        window.location.href = '/';
+        alert(msg);
     })
 
     socket.on('opponentReady', () => {
@@ -104,6 +108,9 @@ $(document).ready(function() {
     // Game over or opponent leaves
     socket.on('gameOver', function (color) {
         console.log(`${color} wins`);
+        let winnerText = `${color} wins`;
+        winnerText = '[' + winnerText.charAt(0).toUpperCase() + winnerText.slice(1) + ']';
+        $header.text(winnerText);
         playing = false;
         // resetGame(color);
     })

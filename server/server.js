@@ -119,9 +119,6 @@ io.on('connection', (socket) => {
     let username = session.username;
     let sessionId = session.id;
     let roomId = session.roomId;
-    session.connections++;
-    session.save();
-    sessions[sessionId] = session;
     let color;
 
     // TODO: dictionary sessionId to username, set room options [WIP]
@@ -168,16 +165,24 @@ io.on('connection', (socket) => {
     socket.join(roomId);
 
     // Check if room contains sessionId
-    if (rooms[roomId] && sessionId in rooms[roomId]) {
-        let data = {
-            fen: games[roomId].fen(),
-            color: rooms[roomId][sessionId].color,
-            roomOptions: roomOptions,
-            headerText: rooms[roomId][sessionId].headerText,
-            ready: rooms[roomId][sessionId].ready,
-            playing: rooms[roomId].playing
+    if (rooms[roomId] && (sessionId in rooms[roomId])) {
+        try {
+            session.connections++;
+            session.save();
+            sessions[sessionId] = session;
+            let data = {
+                fen: games[roomId].fen(),
+                color: rooms[roomId][sessionId].color,
+                roomOptions: roomOptions,
+                headerText: rooms[roomId][sessionId].headerText,
+                ready: rooms[roomId][sessionId].ready,
+                playing: rooms[roomId].playing
+            }
+            socket.emit('loadGame', data);
+        } catch (e) {
+            console.log(e)
+            handleErrorRedirect();
         }
-        socket.emit('loadGame', data);
     }
     else {
         // If 1 player then white, if 2 players then black, otherwise full.
@@ -193,6 +198,9 @@ io.on('connection', (socket) => {
                 rooms[roomId] = {};
                 games[roomId] = new chess.Chess();
             }
+            session.connections++;
+            session.save();
+            sessions[sessionId] = session;
             rooms[roomId][sessionId] = {};
             console.log('player ' + username + ' connected to room ' + roomId);
             // the first player to join the room gets white
@@ -215,7 +223,7 @@ io.on('connection', (socket) => {
 
         } else {
             // TODO: redirect when full, probe room size before login
-            socket.emit('full', roomId);
+            handleErrorRedirect('Room is full.');
         }
     }
 
@@ -266,7 +274,7 @@ io.on('connection', (socket) => {
         sessions[sessionId] = session;
         // Set 10s timeout to handle refresh
         setTimeout(function () {
-            if (sessions[sessionId].connections === 0) {
+            if (sessions[sessionId] && sessions[sessionId].connections <= 0) {
                 delete rooms[roomId][sessionId];
                 delete sessions[sessionId];
                 console.log('player ' + sessionId + ' disconnected from Room ' + roomId);
@@ -351,17 +359,21 @@ io.on('connection', (socket) => {
 
     socket.on('highlightBombs', () => {
         // TODO: highlight other types of bombs
-        let fBombs = rooms[roomId][sessionId].fBombs
-        for (let i = 0; i < fBombs.length; i++) {
-            for (let j = 0; j < fBombs[0].length; j++) {
-                if (fBombs[i][j] === 1) {
-                    let square = mapIdx(i, j);
-                    socket.emit('highlightBomb', {
-                        square: square,
-                        type: 'f'
-                    })
+        try {
+            let fBombs = rooms[roomId][sessionId].fBombs
+            for (let i = 0; i < fBombs.length; i++) {
+                for (let j = 0; j < fBombs[0].length; j++) {
+                    if (fBombs[i][j] === 1) {
+                        let square = mapIdx(i, j);
+                        socket.emit('highlightBomb', {
+                            square: square,
+                            type: 'f'
+                        })
+                    }
                 }
             }
+        } catch (e) {
+            handleErrorRedirect();
         }
 
     })
@@ -435,6 +447,26 @@ io.on('connection', (socket) => {
     // socket.on('skipTurn', () => {
     //     socket.emit('skipTurn');
     // })
+
+    process.on('uncaughtException', function (err) {
+        console.error((new Date).toUTCString() + ' uncaughtException:', err.message);
+        console.error(err.stack);
+        handleErrorRedirect();
+        // Send the error log to your email
+        // process.exit(1);
+    })
+
+    function handleErrorRedirect(msg=null) {
+        session.connections--;
+        session.save();
+        sessions[sessionId] = session;
+        if (msg) {
+            socket.emit('error', msg);
+        } else {
+            socket.emit('error', ('An error has occurred, please try again.'));
+        }
+
+    }
 })
 
 
