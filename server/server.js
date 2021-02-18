@@ -189,7 +189,7 @@ io.on('connection', (socket) => {
         // let numPlayers = io.sockets.adapter.rooms.get(roomId).size;
         let numPlayers;
         if (rooms[roomId]) {
-            numPlayers = Object.keys(rooms[roomId]).length;
+            numPlayers = rooms[roomId].numPlayers;
         } else {
             numPlayers = 0;
         }
@@ -212,6 +212,7 @@ io.on('connection', (socket) => {
             rooms[roomId][sessionId].color = color;
             let gameFen = games[roomId].fen();
             numPlayers++;
+            rooms[roomId].numPlayers = numPlayers;
             // Send initial data to client socket
             socket.emit('player', {
                 sessionId,
@@ -277,6 +278,7 @@ io.on('connection', (socket) => {
             if (sessions[sessionId] && sessions[sessionId].connections <= 0) {
                 delete rooms[roomId][sessionId];
                 delete sessions[sessionId];
+                rooms[roomId].numPlayers--;
                 console.log('player ' + sessionId + ' disconnected from Room ' + roomId);
                 io.to(roomId).emit('gameOver', color === 'white' ? 'black' : 'white');
             }
