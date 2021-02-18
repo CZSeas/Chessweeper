@@ -244,6 +244,7 @@ io.on('connection', (socket) => {
                 games[roomId].load(games[roomId].fen()); // reload game
                 io.to(roomId).emit('explodeBomb', {
                     gameFen: games[roomId].fen(),
+                    square: move.to,
                     type: type,
                     i: i,
                     j: j
