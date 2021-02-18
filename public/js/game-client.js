@@ -21,6 +21,11 @@ $(document).ready(function() {
 
     const $board = $('#myBoard');
     const $confirmBombs = $('#confirmBombs');
+    const $username = $('#username');
+    $.get('/user', function (data) {
+        $username.text(data.username);
+    })
+    const $username_opp = $('#username_opp');
     const $header = $('#header');
     let headerText = {
         waiting: '[Waiting for opponent...]',
@@ -53,13 +58,21 @@ $(document).ready(function() {
         socket.emit('setHeader', headerText.waiting);
     })
 
-    // For player already in room
+    // Initial setup game
     socket.on('setup', () => {
         // resetGame(color);
         socket.emit('configOptions');
         $confirmBombs.addClass('active');
         $header.text(headerText.setting);
         socket.emit('setHeader', headerText.setting);
+    })
+
+    socket.on('getOpponent', (data) => {
+        $username_opp.text(data.username);
+    })
+
+    socket.on('handshakeOpponent', () => {
+        socket.emit('getOpponent');
     })
 
     // Load game from server
@@ -69,6 +82,7 @@ $(document).ready(function() {
         createBoard(data.color);
         board.position(data.fen);
         gameClient.load(data.fen)
+        $username.text(data.username);
         $header.text(data.headerText);
         playing = data.playing;
         ready = data.ready;
@@ -111,6 +125,7 @@ $(document).ready(function() {
         let winnerText = `${color} wins`;
         winnerText = '[' + winnerText.charAt(0).toUpperCase() + winnerText.slice(1) + ']';
         $header.text(winnerText);
+        socket.emit('setHeader', hwinnerText);
         playing = false;
         // resetGame(color);
     })
@@ -227,10 +242,6 @@ $(document).ready(function() {
     socket.on('getBombsAdjacent', function (numAdjacent) {
         showNumAdjacent(numAdjacent);
     })
-
-    // socket.on('setBombs', () => {
-    //     // Wait for mines to be set
-    // })
 
     function explodeBomb(gameFen) {
         // Update board/gameClient

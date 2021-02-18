@@ -73,7 +73,7 @@ app.get('/home', function (req, res) {
 // Redirect to play
 app.post('/home', function (req, res) {
     req.session.username = req.body.username;
-    req.session.roomId = req.body.roomId;
+    req.session.roomId = req.body.roomId.toUpperCase();
     req.session.connections = 0;
     req.session.save(() => {
         res.redirect('/play');
@@ -82,6 +82,12 @@ app.post('/home', function (req, res) {
 
 app.get('/play', function (req, res) {
     res.sendFile(path.join(publicPath, 'html/game.html'));
+})
+
+app.get('/user', function (req, res) {
+    res.json({
+        username: req.session.username
+    })
 })
 
 
@@ -121,7 +127,7 @@ io.on('connection', (socket) => {
     let roomId = session.roomId;
     let color;
 
-    // TODO: dictionary sessionId to username, set room options [WIP]
+    // TODO: ability to create room and set room options [WIP]
 
     // game config
     let roomOptions = {
@@ -147,7 +153,6 @@ io.on('connection', (socket) => {
         }
     }
 
-    // TODO: implement set bombs
     socket.on('configOptions', () => {
         configureOptions(roomOptions);
     })
@@ -176,9 +181,12 @@ io.on('connection', (socket) => {
                 roomOptions: roomOptions,
                 headerText: rooms[roomId][sessionId].headerText,
                 ready: rooms[roomId][sessionId].ready,
-                playing: rooms[roomId].playing
+                playing: rooms[roomId].playing,
+                username: rooms[roomId][sessionId].username
             }
+            console.log(Object.keys(rooms[roomId])[1-Object.keys(rooms[roomId]).indexOf(sessionId)]);
             socket.emit('loadGame', data);
+            io.to(roomId).emit('handshakeOpponent');
         } catch (e) {
             console.log(e)
             handleErrorRedirect();
@@ -202,6 +210,7 @@ io.on('connection', (socket) => {
             session.save();
             sessions[sessionId] = session;
             rooms[roomId][sessionId] = {};
+            rooms[roomId][sessionId].username = username;
             console.log('player ' + username + ' connected to room ' + roomId);
             // the first player to join the room gets white
             if (numPlayers === 1) {
@@ -210,9 +219,10 @@ io.on('connection', (socket) => {
                 color = 'white';
             }
             rooms[roomId][sessionId].color = color;
-            let gameFen = games[roomId].fen();
             numPlayers++;
             rooms[roomId].numPlayers = numPlayers;
+            let gameFen = games[roomId].fen();
+
             // Send initial data to client socket
             socket.emit('player', {
                 sessionId,
@@ -264,7 +274,15 @@ io.on('connection', (socket) => {
 
     // 'play' is emitted when both players have joined and the game can start
     socket.on('setup', () => {
+        io.to(roomId).emit('handshakeOpponent');
         io.to(roomId).emit('setup');
+    })
+
+    socket.on('getOpponent', () => {
+        let data = {
+            username: username
+        }
+        socket.to(roomId).emit('getOpponent', data);
     })
 
     // when the user disconnects from the server, remove them from the game room
