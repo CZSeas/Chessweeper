@@ -267,6 +267,7 @@ io.on('connection', (socket) => {
         setTimeout(function () {
             if (sessions[sessionId].connections === 0) {
                 delete rooms[roomId][sessionId];
+                delete sessions[sessionId];
                 console.log('player ' + sessionId + ' disconnected from Room ' + roomId);
                 io.to(roomId).emit('gameOver', color === 'white' ? 'black' : 'white');
             }

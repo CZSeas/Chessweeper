@@ -1,8 +1,8 @@
 // TODO: add way to change colors using button/prompt
-// TODO: add way to toggle off misc. gameClient options [WIP]
+// TODO: add way to toggle off misc. gameClient options
 // TODO: display username
 // TODO: optional promotion
-
+// TODO: checkmate text box
 
 // COMPLETE: fixed pawn jump highlight bug by handling FEN exception
 // COMPLETE: add in check condition kamikaze
