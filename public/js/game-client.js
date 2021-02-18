@@ -125,7 +125,7 @@ $(document).ready(function() {
         let winnerText = `${color} wins`;
         winnerText = '[' + winnerText.charAt(0).toUpperCase() + winnerText.slice(1) + ']';
         $header.text(winnerText);
-        socket.emit('setHeader', hwinnerText);
+        socket.emit('setHeader', winnerText);
         playing = false;
         // resetGame(color);
     })
