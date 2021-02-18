@@ -20,8 +20,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="088806d5-fce8-4b1e-bebf-9d5adcab2446" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/public/css/_tools.scss" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/public/css/csshake.min.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/public/css/game-styles.scss" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/css/game-styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/css/game-styles.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/public/js/game-client.js" beforeDir="false" afterPath="$PROJECT_DIR$/public/js/game-client.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/server/server.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,6 +53,7 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../chess" />
     <property name="nodejs_interpreter_path" value="node" />
     <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="watcher.settings" />
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
   <component name="RecentsManager">
@@ -72,7 +79,7 @@
       <workItem from="1611875309905" duration="65259000" />
       <workItem from="1612238373497" duration="8762000" />
       <workItem from="1612366141232" duration="1804000" />
-      <workItem from="1613185713967" duration="60370000" />
+      <workItem from="1613185713967" duration="75637000" />
     </task>
     <servers />
   </component>
@@ -92,14 +99,31 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="WindowStateProjectService">
+    <state x="828" y="178" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1613599944181">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="828" y="178" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613599944181" />
     <state x="1118" y="321" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1613202557632">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="1118" y="321" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613202557632" />
-    <state x="1153" y="282" key="FileChooserDialogImpl" timestamp="1608803346672">
+    <state x="1109" y="270" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1613513797407">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
+    <state x="1109" y="270" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613513797407" />
+    <state x="1048" y="301" key="EditFileWatcherDialog" timestamp="1613513441705">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="1048" y="301" key="EditFileWatcherDialog/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613513441705" />
+    <state x="1153" y="282" key="FileChooserDialogImpl" timestamp="1613513394608">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="1153" y="282" key="FileChooserDialogImpl/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613513394608" />
     <state x="1153" y="282" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1608803346672" />
+    <state x="880" y="168" key="SettingsEditor" timestamp="1613513363720">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="880" y="168" key="SettingsEditor/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613513363720" />
     <state x="959" y="133" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1612136390440">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -108,10 +132,14 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="1009" y="244" key="run.anything.popup/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613498455547" />
-    <state x="1117" y="230" width="672" height="678" key="search.everywhere.popup" timestamp="1613500870524">
+    <state x="1171" y="381" key="scopes" timestamp="1613513385613">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="1117" y="230" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613500870524" />
+    <state x="1171" y="381" key="scopes/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613513385613" />
+    <state x="1117" y="230" width="672" height="678" key="search.everywhere.popup" timestamp="1613603245922">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="1117" y="230" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040/1920.80.1920.1040@0.0.1920.1040" timestamp="1613603245922" />
     <state x="1117" y="230" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1608805199143" />
   </component>
 </project>

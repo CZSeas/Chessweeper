@@ -2,7 +2,7 @@
 // TODO: add way to toggle off misc. gameClient options [WIP]
 // TODO: display username
 // TODO: optional promotion
-// TODO: check if serverside opponentReady/ready is needed
+
 
 // COMPLETE: fixed pawn jump highlight bug by handling FEN exception
 // COMPLETE: add in check condition kamikaze
@@ -11,6 +11,7 @@
 // COMPLETE: add way to choose room
 // COMPLETE: after bomb blows up reduce count
 // COMPLETE: add mine setting time period
+// COMPLETE: check if serverside opponentReady/ready is needed
 
 /* ------------------------SETUP------------------------------------- */
 $(document).ready(function() {
@@ -40,6 +41,7 @@ $(document).ready(function() {
     /* --------------------------SERVER CONNECTION------------------------------- */
 
     socket.on('player', (msg) => {
+        gameClient.load(msg.gameFen);
         color = msg.color;
         numPlayers = msg.numPlayers;
         roomOptions = msg.roomOptions;
@@ -58,15 +60,6 @@ $(document).ready(function() {
         $confirmBombs.addClass('active');
         $header.text(headerText.setting);
         socket.emit('setHeader', headerText.setting);
-    })
-
-    // Get current game Fen
-    socket.on('getGame', (sessionId) => {
-        let game = {
-            fen: gameClient.fen(),
-            sessionId: sessionId
-        }
-        socket.emit('getGame', game);
     })
 
     // Load game from server
@@ -103,11 +96,9 @@ $(document).ready(function() {
     })
 
     // Check for moves from other player
-    socket.on('move', function (move) {
-        gameClient.move(move, {legal: false});
-        board.position(gameClient.fen());
-        // let opponentColor = color === 'white' ? 'black' : 'white';
-        // console.log(opponentColor + " moved");
+    socket.on('move', function (gameFen) {
+        gameClient.load(gameFen);
+        board.position(gameFen);
     })
 
     // Game over or opponent leaves
@@ -116,7 +107,6 @@ $(document).ready(function() {
         playing = false;
         // resetGame(color);
     })
-
 
     // socket.on('skipTurn', () => {
     //     skipTurn();
@@ -150,19 +140,15 @@ $(document).ready(function() {
     function onDrop(source, target) {
         removeHighlight();
 
-        let targetPiece = gameClient.get(target);
+        let tempGame = new Chess();
+        tempGame.load(gameClient.fen());
 
         // see if the move is legal
-        let move = gameClient.move({
+        let move = tempGame.move({
             from: source,
             to: target,
             promotion: 'q'// NOTE: always promote to a queen for example simplicity
         }, {legal: false})
-        if (gameClient.game_over() || (move != null && targetPiece !== null
-            && targetPiece.type === 'k')) {
-            // TODO: handle checkBomb in checkmate situations
-            socket.emit('gameOver', gameClient.turn() === 'w' ? 'black' : 'white');
-        }
 
         // illegal move or check edge case
         if (move === null) {
@@ -171,7 +157,6 @@ $(document).ready(function() {
             socket.emit('move', move);
         }
 
-        // updateStatus()
     }
 
     function onSnapEnd() {
@@ -225,10 +210,10 @@ $(document).ready(function() {
         }
     })
 
-    socket.on('explodeBomb', function (msg) {
-        explodeBomb(msg.square);
-        socket.emit('unhighlightBomb', msg);
-        socket.emit('removeBomb', {type: msg.type, i: msg.i, j: msg.j});
+    socket.on('explodeBomb', function (data) {
+        explodeBomb(data.gameFen);
+        socket.emit('unhighlightBomb', data);
+        socket.emit('removeBomb', {type: data.type, i: data.i, j: data.j});
     })
 
     socket.on('addHiddenBomb', function (msg) {
@@ -239,55 +224,20 @@ $(document).ready(function() {
         showNumAdjacent(numAdjacent);
     })
 
-    socket.on('setBombs', () => {
-        // Wait for mines to be set
-    })
+    // socket.on('setBombs', () => {
+    //     // Wait for mines to be set
+    // })
 
-    function removeAdjacent(game, square) {
-        let col = columns.indexOf(square[0]);
-        let row = parseInt(square[1]);
-        for (let i = Math.max(0, col - 1); i <= Math.min(7, col + 1); i++) {
-            for (let j = Math.max(1, row - 1); j <= Math.min(8, row + 1); j++) {
-                let squareFen = `${columns[i]}${j}`;
-                game.remove(squareFen);
-            }
-        }
-    }
-
-    function explodeBomb(square) {
-        removeAdjacent(gameClient, square);
-        console.log('explode');
+    function explodeBomb(gameFen) {
         // Update board/gameClient
-        board.position(gameClient.fen());
-        gameClient.load(gameClient.fen());
+        board.position(gameFen);
+        gameClient.load(gameFen)
+        // Screen shake effect
+        $board.find('.chessboard-63f37').addClass('custom-shake');
+        setTimeout(() => {
+            $board.find('.chessboard-63f37').removeClass('custom-shake');
+        }, 300)
     }
-
-    // function isValidCheckBomb(target) {
-    //     let tempGame = new Chess();
-    //     tempGame.load(gameClient.fen());
-    //     removeAdjacent(tempGame, target);
-    //     return !tempGame.in_check();
-    // }
-    //
-    // function checkBomb(source, target) {
-    //     let checkBomb = false;
-    //     if (isValidCheckBomb(target)) {
-    //         // Move twice to override null move
-    //         for (let i = 0; i < 2; i++) {
-    //             socket.emit('move', {
-    //                 from: source,
-    //                 to: target,
-    //                 promotion: 'q'
-    //             })
-    //         }
-    //         // Manually move the piece
-    //         let piece = gameClient.get(source);
-    //         gameClient.remove(source);
-    //         gameClient.put(piece, target);
-    //         checkBomb = true;
-    //     }
-    //     return checkBomb
-    // }
 
 // function skipTurn () {
 //     let tokens = gameClient.fen().split(' ');
@@ -395,7 +345,6 @@ $(document).ready(function() {
 
         // get list of possible moves for this square
         let moves = getLegalMoves(square);
-        console.log(moves)
 
         // exit if there are no moves available for this square
         if (!piece || moves.length === 0) return;

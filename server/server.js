@@ -1,11 +1,17 @@
+
+
+
 // COMPLETE: Decrement hidden bombs when exploded
 // COMPLETE: Handle refresh by setting up sessionId game room check
+// COMPLETE: refactor game to server side
+// COMPLETE: handle bomb king
 
 const http = require('http');
 const path = require('path');
 const socketIO = require('socket.io');
 const cookieParser = require('cookie-parser');
-const session = require('express-session')
+const session = require('express-session');
+const chess = require('../public/js/chess.js');
 
 const express = require('express');
 
@@ -43,8 +49,9 @@ app.use(sessionMiddleware);
 app.use(function(req, res, next) {
     if ((req.get('X-Forwarded-Proto') !== 'https') && process.env.PORT) {
         res.redirect('https://' + req.get('Host') + req.url);
-    } else
+    } else {
         next();
+    }
 });
 
 // Runs function for every socket that connects
@@ -84,6 +91,7 @@ const columns = 'abcdefgh';
 
 let sessions = {}; // Set of users
 let rooms = {}; // Set of rooms
+let games = {}; // Set of games
 
 function zeros(dimensions) {
     let array = [];
@@ -108,17 +116,15 @@ function mapIdx(i, j) {
 io.on('connection', (socket) => {
 
     const session = socket.request.session;
-    session.connections++;
-    session.save();
-    sessions[session.id] = session;
-
-    // TODO: dictionary session.id to username, set room options [WIP]
-
     let username = session.username;
     let sessionId = session.id;
     let roomId = session.roomId;
+    session.connections++;
+    session.save();
+    sessions[sessionId] = session;
     let color;
 
+    // TODO: dictionary sessionId to username, set room options [WIP]
 
     // game config
     let roomOptions = {
@@ -151,7 +157,7 @@ io.on('connection', (socket) => {
 
     socket.on('play', () => {
         io.to(roomId).emit('play');
-        rooms[roomId][sessionId].playing = true;
+        rooms[roomId].playing = true;
     })
 
     socket.on('ready', () => {
@@ -161,22 +167,17 @@ io.on('connection', (socket) => {
     // Join room given by roomId and find numPlayers in room
     socket.join(roomId);
 
-    // Pass game to other player
-    socket.on('getGame', (game) => {
-        let data = {
-            fen: game.fen,
-            color: rooms[roomId][game.sessionId].color,
-            roomOptions: roomOptions,
-            headerText: rooms[roomId][game.sessionId].headerText,
-            ready: rooms[roomId][game.sessionId].ready,
-            playing: rooms[roomId][game.sessionId].playing
-        }
-        socket.to(roomId).emit('loadGame', data);
-    })
-
     // Check if room contains sessionId
     if (rooms[roomId] && sessionId in rooms[roomId]) {
-        socket.to(roomId).emit('getGame', sessionId);
+        let data = {
+            fen: games[roomId].fen(),
+            color: rooms[roomId][sessionId].color,
+            roomOptions: roomOptions,
+            headerText: rooms[roomId][sessionId].headerText,
+            ready: rooms[roomId][sessionId].ready,
+            playing: rooms[roomId].playing
+        }
+        socket.emit('loadGame', data);
     }
     else {
         // If 1 player then white, if 2 players then black, otherwise full.
@@ -190,6 +191,7 @@ io.on('connection', (socket) => {
         if (numPlayers <= 1) {
             if (numPlayers === 0) {
                 rooms[roomId] = {};
+                games[roomId] = new chess.Chess();
             }
             rooms[roomId][sessionId] = {};
             console.log('player ' + username + ' connected to room ' + roomId);
@@ -200,13 +202,15 @@ io.on('connection', (socket) => {
                 color = 'white';
             }
             rooms[roomId][sessionId].color = color;
+            let gameFen = games[roomId].fen();
             numPlayers++;
             // Send initial data to client socket
             socket.emit('player', {
                 sessionId,
                 numPlayers,
                 color,
-                roomOptions
+                roomOptions,
+                gameFen
             })
 
         } else {
@@ -218,19 +222,33 @@ io.on('connection', (socket) => {
 
     // The client side emits a 'move' event when a valid move has been made.
     socket.on('move', function (move) {
-        socket.to(roomId).emit('move', move);
-        // TODO: add other bomb types
-        let type = 'f'
-        let [i, j] = mapFen(move.to)
-        // TODO: remove temp neutral bombs
-        if (rooms[roomId][sessionId].hBombs !== undefined && (rooms[roomId][sessionId].hBombs[i][j] === 1
-                || rooms[roomId][sessionId].fBombs[i][j] === 1)) {
-            io.to(roomId).emit('explodeBomb', {
-                square: move.to,
-                type: type,
-                i: i,
-                j: j
-            })
+        let game = games[roomId];
+        let targetPiece = game.get(move.to);
+        game.move(move, {legal: false});
+
+        io.to(roomId).emit('move', game.fen());
+
+        if (game.game_over() || (targetPiece !== null
+                && targetPiece.type === 'k')) {
+            // TODO: test checkmate, handle checkBomb in checkmate situations
+            rooms[roomId].playing = false;
+            io.to(roomId).emit('gameOver', game.turn() === 'w' ? 'black' : 'white');
+        } else {
+            // TODO: add other bomb types
+            let type = 'f';
+            let [i, j] = mapFen(move.to)
+            // TODO: remove temp neutral bombs
+            if (rooms[roomId][sessionId].hBombs !== undefined && (rooms[roomId][sessionId].hBombs[i][j] === 1
+                    || rooms[roomId][sessionId].fBombs[i][j] === 1)) {
+                explodeBomb(move.to);
+                games[roomId].load(games[roomId].fen()); // reload game
+                io.to(roomId).emit('explodeBomb', {
+                    gameFen: games[roomId].fen(),
+                    type: type,
+                    i: i,
+                    j: j
+                })
+            }
         }
     })
 
@@ -239,26 +257,20 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('setup');
     })
 
-    socket.on('gameOver', function (color) {
-        io.to(roomId).emit('gameOver', color);
-    })
-
-    // when the user disconnects from the server, remove him from the game room
+    // when the user disconnects from the server, remove them from the game room
     socket.on('disconnect', function () {
         // TODO: add way to leave room without closing tab
         session.connections--;
         session.save();
-        // Set 3s timeout to handle refresh
+        sessions[sessionId] = session;
+        // Set 10s timeout to handle refresh
         setTimeout(function () {
             if (sessions[sessionId].connections === 0) {
-                // TODO: dictionary of sessionIds does nothing right now
                 delete rooms[roomId][sessionId];
                 console.log('player ' + sessionId + ' disconnected from Room ' + roomId);
                 io.to(roomId).emit('gameOver', color === 'white' ? 'black' : 'white');
             }
-        }, 3000);
-        // console.log('player ' + username + ' disconnected from room ' + roomId);
-        // io.to(roomId).emit('gameOver', color === 'white' ? 'black' : 'white');
+        }, 10000);
     })
 
 
@@ -357,6 +369,20 @@ io.on('connection', (socket) => {
         socket.emit('getBombsAdjacent', numAdjacent);
     })
 
+    function explodeBomb(square) {
+        let col = columns.indexOf(square[0]);
+        let row = parseInt(square[1]);
+        for (let i = Math.max(0, col - 1); i <= Math.min(7, col + 1); i++) {
+            for (let j = Math.max(1, row - 1); j <= Math.min(8, row + 1); j++) {
+                let squareFen = `${columns[i]}${j}`;
+                if (games[roomId].get(squareFen)
+                    && games[roomId].get(squareFen).type === 'k') {
+                    io.to(roomId).emit('gameOver', games[roomId].turn() === 'w' ? 'black' : 'white');
+                }
+                games[roomId].remove(squareFen);
+            }
+        }
+    }
 
     function getBombsAdjacent (square) {
         let [row, col] = mapFen(square);
@@ -374,6 +400,8 @@ io.on('connection', (socket) => {
         }
         return numAdjacent;
     }
+
+
 
 /* ----------------------------VISUAL------------------------------------------------- */
 
