@@ -23,7 +23,7 @@ $(document).ready(function() {
     const $confirmBombs = $('#confirmBombs');
     const $username = $('#username');
     $.get('/user', function (data) {
-        $username.text(data.username);
+        $username.text('[' + data.username + ']');
     })
     const $username_opp = $('#username_opp');
     const $header = $('#header');
@@ -68,7 +68,7 @@ $(document).ready(function() {
     })
 
     socket.on('getOpponent', (data) => {
-        $username_opp.text(data.username);
+        $username_opp.text('[' + data.username + ']');
     })
 
     socket.on('handshakeOpponent', () => {
@@ -82,7 +82,7 @@ $(document).ready(function() {
         createBoard(data.color);
         board.position(data.fen);
         gameClient.load(data.fen)
-        $username.text(data.username);
+        $username.text('[' + data.username + ']');
         $header.text(data.headerText);
         playing = data.playing;
         ready = data.ready;
@@ -129,10 +129,6 @@ $(document).ready(function() {
         playing = false;
         // resetGame(color);
     })
-
-    // socket.on('skipTurn', () => {
-    //     skipTurn();
-    // })
 
     /* ------------------------GAME MECHANICS------------------------------------- */
 
@@ -205,10 +201,6 @@ $(document).ready(function() {
         createBoard(color);
     }
 
-    function swapColors() {
-        color = color === 'white' ? 'black' : 'white';
-    }
-
     // TODO: refactor this concept
     function swapColorsOnLeave() {
         if (color === 'black') {
@@ -253,13 +245,6 @@ $(document).ready(function() {
             $board.find('.chessboard-63f37').removeClass('custom-shake');
         }, 300)
     }
-
-// function skipTurn () {
-//     let tokens = gameClient.fen().split(' ');
-//     tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
-//     console.log(tokens)
-//     gameClient.load(tokens.join(' '))
-// }
 
 /* ------------------------------VISUAL--------------------------------------------------------- */
 
@@ -326,6 +311,8 @@ $(document).ready(function() {
         $dot.text(numAdjacent);
     }
 
+
+    // TODO: Maybe use for simultaneous?
     function getLegalMoves(square) {
         let tempGame = new Chess();
         tempGame.load(gameClient.fen());
@@ -359,7 +346,17 @@ $(document).ready(function() {
         }
 
         // get list of possible moves for this square
-        let moves = getLegalMoves(square);
+        let moves = {};
+        if (piece && playing) {
+            if (piece[0] === color[0]) {
+                moves = gameClient.moves({
+                    square: square,
+                    verbose: true
+                })
+                // moves = getLegalMoves(square);
+            }
+        }
+
 
         // exit if there are no moves available for this square
         if (!piece || moves.length === 0) return;
@@ -376,31 +373,6 @@ $(document).ready(function() {
 
     window.onresize = () => {
         board.resize()
-    }
-
-// Prints shit to HTML
-    function updateStatus() {
-        let status = ''
-
-        let moveColor = 'White'
-        if (gameClient.turn() === 'b') {
-            moveColor = 'Black'
-        }
-
-        // checkmate?
-        if (gameClient.in_checkmate()) {
-            status = 'Game over, ' + moveColor + ' is in checkmate.'
-        } else if (gameClient.in_draw()) { // draw?
-            status = 'Game over, drawn position'
-        } else { // gameClient still on
-            status = moveColor + ' to move'
-
-            // check?
-            if (gameClient.in_check()) {
-                status += ', ' + moveColor + ' is in check'
-            }
-        }
-        console.log(status)
     }
 
 
